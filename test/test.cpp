@@ -9,11 +9,11 @@
 #include <boost/array.hpp>
 USING_MOCKCPP_NS;
 using namespace std;
+using ::testing::TestWithParam;
+using ::testing::Values;
 
 #include "erl_interface.h"
 #include "ei.h"
-
-
 
 struct Serializable;
 void ___decode_eterm(Serializable& __s, const ETERM* msg);
@@ -47,9 +47,10 @@ template<typename T> T TypeMetaRegister<T>::meta_register_global_obj(&___ArgForc
 /*----------------------------------------------------------------------------*/
 template<typename T>
 struct FieldsInfo {
-  FieldsInfo() {}
+  FieldsInfo() { }
   FieldsInfo(void* p) {
     static T* __p_DataA = &TypeMetaRegister<T>::meta_register_global_obj;
+    p = __p_DataA; //disable unused variable warning
     
     g_pp_next_field_info_ = &class_fields_info_;
     cout << "1set g_pp_next_field_info_ at class register: " << (long)g_pp_next_field_info_ << endl;
@@ -59,9 +60,36 @@ struct FieldsInfo {
 template<typename T> FieldInfo* FieldsInfo<T>::class_fields_info_ = NULL;
 
 struct Serializable {
+  Serializable() {}
   Serializable(FieldInfo* class_fields_info_) : fields_info_in_instance_(class_fields_info_) {} 
   FieldInfo* fields_info_in_instance_;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+void ___decode_eterm(Serializable& __s, const ETERM* msg) {
+  FieldInfo* f = __s.fields_info_in_instance_;
+  ETERM* et = NULL;
+  
+  while (f != NULL) {
+    //cout << (long)f << "index: " <<  (long)f->index_ << " offset: " << (long)f->offset_
+    //     << " decode_f: " << (long)f->decode_func_ << " next: " << (long)f->next_field_info_ << endl;
+    if (ERL_IS_TUPLE(msg)) {
+      et = erl_element(f->index_, msg);
+    } else if (ERL_IS_LIST(msg)) {
+      et = erl_hd(msg);
+    }
+    
+    (*f->decode_func_)(&__s, f->offset_, et);
+    
+    erl_free_term(et);
+
+    if (ERL_IS_LIST(msg)) {
+      msg = erl_tl(msg);
+    }
+    
+    f = f->next_field_info_;
+  }
+}
 
 /*----------------------------------------------------------------------------*/
 template<typename T, class Enable = void>
@@ -158,63 +186,76 @@ struct StartAddressRegister {
   }
 };
 
+#define ___def_data(_name) \
+struct _name : StartAddressRegister, FieldsInfo<_name>, Serializable {                    \
+  typedef _name data_type;                                                                \
+  _name(ArgForceMetaRegister* a) : StartAddressRegister(this), FieldsInfo<_name>(this) {  \
+    g_field_index_ = 0;                                                                   \
+    g_pp_next_field_info_ = NULL;                                                         \
+  }                                                                                       \
+  _name() : Serializable(class_fields_info_) { }
+
+#define ___field_impl(_type, line) __t<_type, data_type, __##line>
+#define ___field(_type) ___field_impl(_type, LINE__)
+
+#define ___end_def_data };
+
+/*----------------------------------------------------------------------------*/
+___def_data(DataA)
+  ___field(int) ia;
+  ___field(int) ib;
+___end_def_data;
+
+___def_data(DataB)
+  ___field(const char*) x;
+  ___field(DataA) y;
+___end_def_data;
+
+////////////////////////////////////////////////////////////////////////////////
+TEST(SingleFieldData, xxx0) {
+  DataA a;
+  ETERM* tuplep = erl_format((char*)"{3, 4}");
+  
+  ___decode_eterm(a, tuplep);  
+
+  EXPECT_EQ(3, (int)a.ia);
+  EXPECT_EQ(4, (int)a.ib);
+  erl_free_term(tuplep);
+}
+
+struct Eterm_to_DataB : public TestWithParam<const char*> {
+  virtual void SetUp() { tuplep_ = erl_format((char*)GetParam()); }
+  virtual void TearDown() { erl_free_term(tuplep_); }
+  ETERM* tuplep_;
+};
+
+TEST_P(Eterm_to_DataB, xxx4) {
+  DataB d;
+  
+  ___decode_eterm(d, tuplep_);  
+
+  EXPECT_STREQ("foo", d.x);
+  EXPECT_EQ(3, (int)d.y._.ia);
+  EXPECT_EQ(4, (int)d.y._.ib);
+}
+
+INSTANTIATE_TEST_CASE_P( TestTupleAndList, Eterm_to_DataB
+                       , Values( "[foo, {3, 4}]"
+                       , "[foo, [3, 4]]"
+                       , "{foo, {3, 4}}"
+                       , "{foo, [3, 4]}"));
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /*
 struct DataA;
 struct DataA : StartAddressRegister, FieldsInfo<DataA>, Serializable {
   typedef DataA data_type;
-  
-  DataA() : Serializable(class_fields_info_) {
-    static DataA* __p_DataA = &TypeMetaRegister<DataA>::meta_register_global_obj;
-  }
-  
-  DataA(ArgForceMetaRegister* a) : StartAddressRegister(this)
-                                 , FieldsInfo<DataA>(this)
-                                 , Serializable(NULL) {
-    cout << "=============> register Datax: " << this << endl;
-    g_field_index_ = 0;
-    g_pp_next_field_info_ = NULL;
-    cout << "next field: " << (long)class_fields_info_ << endl;
-    cout << "=============> register Datax finished." << endl;
-  }
-  
-  __t<int, data_type, 1> ia;
-  __t<int, data_type, 2> ib;
-};
-
-
-struct DataB;
-struct DataB : StartAddressRegister, FieldsInfo<DataB>, Serializable {
-  typedef DataB data_type;
-  
-  DataB() : Serializable(class_fields_info_) {
-    static DataB* __p_DataB = &TypeMetaRegister<DataB>::meta_register_global_obj;
-  }
-  
-  DataB(ArgForceMetaRegister* a) : StartAddressRegister(this)
-                                 , FieldsInfo<DataB>(this)
-                                 , Serializable(NULL) {
-    cout << "=============> register Datax: " << this << endl;
-    g_field_index_ = 0;
-    g_pp_next_field_info_ = NULL;
-    cout << "next field: " << (long)class_fields_info_ << endl;
-    cout << "=============> register Datax finished." << endl;
-  }
-  
-  __t<const char*, data_type, 1> x;
-  __t<DataA, data_type, 1> y;  
-};
-*/
-
-struct DataA;
-struct DataA : StartAddressRegister, FieldsInfo<DataA>, Serializable {
-  typedef DataA data_type;
-  
-  DataA() : Serializable(class_fields_info_) {}
   DataA(ArgForceMetaRegister* a) : StartAddressRegister(this), FieldsInfo<DataA>(this), Serializable(NULL) {
     g_field_index_ = 0;
     g_pp_next_field_info_ = NULL;
   }
+  DataA() : Serializable(class_fields_info_) { }
   
   __t<int, data_type, 1> ia;
   __t<int, data_type, 2> ib;
@@ -223,82 +264,13 @@ struct DataA : StartAddressRegister, FieldsInfo<DataA>, Serializable {
 struct DataB;
 struct DataB : StartAddressRegister, FieldsInfo<DataB>, Serializable {
   typedef DataB data_type;
-  
-  DataB() : Serializable(class_fields_info_) {
-    static DataB* __p_DataB = &TypeMetaRegister<DataB>::meta_register_global_obj;
-  }
-  
   DataB(ArgForceMetaRegister* a) : StartAddressRegister(this), FieldsInfo<DataB>(this), Serializable(NULL) {
     g_field_index_ = 0;
     g_pp_next_field_info_ = NULL;
   }
+  DataB() : Serializable(class_fields_info_) { }
   
   __t<const char*, data_type, 1> x;
   __t<DataA, data_type, 1> y;  
-};
-
-////////////////////////////////////////////////////////////////////////////////
-void ___decode_eterm(Serializable& __s, const ETERM* msg) {
-  FieldInfo* f = __s.fields_info_in_instance_;
-  ETERM* et = NULL;
-  
-  while (f != NULL) {
-    cout << (long)f << "index: " <<  (long)f->index_ << " offset: " << (long)f->offset_
-         << " decode_f: " << (long)f->decode_func_ << " next: " << (long)f->next_field_info_ << endl;
-
-    if (ERL_IS_TUPLE(msg)) {
-      et = erl_element(f->index_, msg);
-    } else if (ERL_IS_LIST(msg)) {
-      et = erl_hd(msg);
-    }
-    
-    (*f->decode_func_)(&__s, f->offset_, et);
-    
-    erl_free_term(et);
-
-    if (ERL_IS_LIST(msg)) {
-      msg = erl_tl(msg);
-    }
-    
-    f = f->next_field_info_;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-TEST(SingleFieldData, xxx) {
-  erl_init(NULL, 0);
-  
-  DataB d;
-  ETERM* tuplep = erl_format((char*)"{foo, {3, 4}}");
-  
-  ___decode_eterm(d, tuplep);
-  
-  cout << "value: " << d.x << " , " << d.y._.ia << " , " << d.y._.ib << endl;
-  erl_free_term(tuplep);
-}
-
-TEST(SingleFieldData, xxx2) {
-  erl_init(NULL, 0);
-  
-  DataB d;
-  ETERM* tuplep = erl_format((char*)"{foo, [3, 4]}");
-  
-  ___decode_eterm(d, tuplep);
-  
-  cout << "value: " << d.x << " , " << d.y._.ia << " , " << d.y._.ib << endl;
-  erl_free_term(tuplep);
-}
-
-
-TEST(SingleFieldData, xxx3) {
-  erl_init(NULL, 0);
-  
-  DataB d;
-  ETERM* tuplep = erl_format((char*)"[foo, [3, 4]]");
-  
-  ___decode_eterm(d, tuplep);
-  
-  cout << "value: " << d.x << " , " << d.y._.ia << " , " << d.y._.ib << endl;
-  erl_free_term(tuplep);
-}
+};*/
 
