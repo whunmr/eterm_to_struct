@@ -149,13 +149,24 @@ struct StartAddressRegister {
 struct ArgForceMetaRegister {} ___ArgForceMetaRegister;
 
 ////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct TypeMetaRegister {
+  TypeMetaRegister() {}
+  TypeMetaRegister(ArgForceMetaRegister* a) {}
+  static T meta_register_global_obj;
+};
+
+template<typename T> T TypeMetaRegister<T>::meta_register_global_obj(&___ArgForceMetaRegister);
 
 struct DataA;
-extern DataA ___DataA_meta_register_instance;
-struct DataA : StartAddressRegister, FieldsInfo<DataA>, Serializable {
+//extern DataA ___DataA_meta_register_instance;
+struct DataA : StartAddressRegister, FieldsInfo<DataA>, Serializable, TypeMetaRegister<DataA> {
   typedef DataA data_type;
   DataA() : Serializable(class_fields_info_) {}
-  DataA(ArgForceMetaRegister* a) : StartAddressRegister(this), FieldsInfo<DataA>(this), Serializable(NULL) {
+  DataA(ArgForceMetaRegister* a) : StartAddressRegister(this)
+                                 , FieldsInfo<DataA>(this)
+                                 , Serializable(NULL)
+                                 , TypeMetaRegister<DataA> {
     cout << "=============> register Datax: " << this << endl;
     g_field_index_ = 0;
     g_pp_next_field_info_ = NULL;
@@ -167,15 +178,18 @@ struct DataA : StartAddressRegister, FieldsInfo<DataA>, Serializable {
   __t<int, data_type, 2> ib;
 };
 
-DataA ___DataA_meta_register_instance(&___ArgForceMetaRegister);
+//DataA ___DataA_meta_register_instance(&___ArgForceMetaRegister);
 
 
 struct DataB;
-extern DataB ___DataB_meta_register_instance;
-struct DataB : StartAddressRegister, FieldsInfo<DataB>, Serializable {
+//extern DataB ___DataB_meta_register_instance;
+struct DataB : StartAddressRegister, FieldsInfo<DataB>, Serializable, TypeMetaRegister<DataB> {
   typedef DataB data_type;
   DataB() : Serializable(class_fields_info_) {}
-  DataB(ArgForceMetaRegister* a) : StartAddressRegister(this), FieldsInfo<DataB>(this), Serializable(NULL) {
+  DataB(ArgForceMetaRegister* a) : StartAddressRegister(this)
+                                 , FieldsInfo<DataB>(this)
+                                 , Serializable(NULL)
+                                 , TypeMetaRegister<DataB> {
     cout << "=============> register Datax: " << this << endl;
     g_field_index_ = 0;
     g_pp_next_field_info_ = NULL;
@@ -187,7 +201,7 @@ struct DataB : StartAddressRegister, FieldsInfo<DataB>, Serializable {
   __t<DataA, data_type, 1> y;  
 };
 
-DataB ___DataB_meta_register_instance(&___ArgForceMetaRegister);
+//DataB ___DataB_meta_register_instance(&___ArgForceMetaRegister);
 
 ////////////////////////////////////////////////////////////////////////////////
 void ___decode_eterm(Serializable& __s, const ETERM* msg) {
