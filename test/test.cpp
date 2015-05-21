@@ -1,22 +1,19 @@
 #include <stdint.h>
 #include <cstring>
 #include <iostream>
-#include <string>
 #include <gtest/gtest.h>
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits.hpp>
 using namespace std;
+
 #include "erl_interface.h"
 #include "ei.h"
 
-struct Serializable;
-void ___decode_eterm(Serializable& __s, const ETERM* msg);
-  
-static void* g_outmost_this_address = NULL;
 typedef unsigned char FieldIndex;
-static FieldIndex g_field_index_;
-
 typedef void (*DecodeFunc)(void* instance, size_t field_offset, const ETERM* msg);
+
+static void* g_outmost_this_address = NULL;
+static FieldIndex g_field_index_;
 
 struct FieldInfo {
   FieldIndex index_;
