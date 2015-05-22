@@ -64,6 +64,9 @@ void ___decode_eterm(Serializable& __s, const ETERM* msg) {
     if (ERL_IS_TUPLE(msg)) {
       et = erl_element(f->index_, msg);
     } else if (ERL_IS_LIST(msg)) {
+      if (ERL_IS_EMPTY_LIST(msg)) {
+        return;
+      }
       et = erl_hd(msg);
     }
     
@@ -203,6 +206,16 @@ TEST(SingleFieldData, xxx0) {
   EXPECT_EQ(4, (int)a.ib);
   erl_free_term(tuplep);
 }
+
+TEST(SingleFieldData, xxx_test_empty_list) {
+  DataA a;
+  ETERM* tuplep = erl_format((char*)"[]");
+  
+  ___decode_eterm(a, tuplep);  
+
+  erl_free_term(tuplep);
+}
+
 
 struct Eterm_to_DataB : public ::testing::TestWithParam<const char*> {
   virtual void SetUp() { tuplep_ = erl_format((char*)GetParam()); }
