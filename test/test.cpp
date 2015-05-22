@@ -64,10 +64,11 @@ void ___decode_eterm(Serializable& __s, const ETERM* msg) {
     if (ERL_IS_TUPLE(msg)) {
       et = erl_element(f->index_, msg);
     } else if (ERL_IS_LIST(msg)) {
-      if (ERL_IS_EMPTY_LIST(msg)) {
-        return;
-      }
       et = erl_hd(msg);
+    }
+
+    if (!et) {
+      return;
     }
     
     (*f->decode_func_)(&__s, f->offset_, et);
@@ -106,6 +107,29 @@ struct Decoder<int> {
   }
 };
 
+#if 0
+typedef struct _eterm {
+  union {
+    Erl_Integer    ival;
+    Erl_Uinteger   uival; 
+    Erl_LLInteger  llval;
+    Erl_ULLInteger ullval;
+    Erl_Float      fval;
+    Erl_Atom       aval;
+    Erl_Pid        pidval;     
+    Erl_Port       portval;    
+    Erl_Ref        refval;   
+    Erl_List       lval;
+    Erl_EmptyList  nval;
+    Erl_Tuple      tval;
+    Erl_Binary     bval;
+    Erl_Variable   vval;
+    Erl_Function   funcval;
+    Erl_Big        bigval;
+  } uval;
+} ETERM;
+
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T, typename Holder, int field_tag>
 struct __t {
@@ -195,8 +219,12 @@ ___def_data(DataB)
   ___field(DataA) y;
 ___end_def_data;
 
+___def_data(DataC)
+  ___field(unsigned int) ui;
+___end_def_data;
+
 ////////////////////////////////////////////////////////////////////////////////
-TEST(SingleFieldData, xxx0) {
+TEST(DataC, xxx0) {
   DataA a;
   ETERM* tuplep = erl_format((char*)"{3, 4}");
   
@@ -207,7 +235,19 @@ TEST(SingleFieldData, xxx0) {
   erl_free_term(tuplep);
 }
 
-TEST(SingleFieldData, xxx_test_empty_list) {
+/*----------------------------------------------------------------------------*/
+TEST(DataA, xxx0) {
+  DataA a;
+  ETERM* tuplep = erl_format((char*)"{3, 4}");
+  
+  ___decode_eterm(a, tuplep);  
+
+  EXPECT_EQ(3, (int)a.ia);
+  EXPECT_EQ(4, (int)a.ib);
+  erl_free_term(tuplep);
+}
+
+TEST(DataA, xxx_test_empty_list) {
   DataA a;
   ETERM* tuplep = erl_format((char*)"[]");
   
@@ -216,7 +256,7 @@ TEST(SingleFieldData, xxx_test_empty_list) {
   erl_free_term(tuplep);
 }
 
-
+/*----------------------------------------------------------------------------*/
 struct Eterm_to_DataB : public ::testing::TestWithParam<const char*> {
   virtual void SetUp() { tuplep_ = erl_format((char*)GetParam()); }
   virtual void TearDown() { erl_free_term(tuplep_); }
