@@ -2,8 +2,6 @@
 #include <cstring>
 #include <iostream>
 #include <gtest/gtest.h>
-#include <boost/utility/enable_if.hpp>
-#include <boost/type_traits.hpp>
 using namespace std;
 
 #include "erl_interface.h"
@@ -51,6 +49,7 @@ struct FieldsInfo {
 template<typename T> FieldInfo* FieldsInfo<T>::class_fields_info_ = NULL;
 
 struct Serializable {
+  typedef FieldInfo self_is_serializable;
   Serializable() {}
   Serializable(FieldInfo* class_fields_info_) : fields_info_in_instance_(class_fields_info_) {} 
   FieldInfo* fields_info_in_instance_;
@@ -81,31 +80,24 @@ void ___decode_eterm(Serializable& __s, const ETERM* msg) {
 }
 
 /*----------------------------------------------------------------------------*/
-template<typename T, class Enable = void>
-struct Decoder {
-  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
-    cout << "default navie decoder" << endl;
-  }
-};
-
 template<typename T>
-struct Decoder<T, typename boost::enable_if_c<boost::is_base_of<Serializable, T>::value>::type> {
+struct Decoder {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     Serializable& nested = *(Serializable*)( ((uint8_t*)instance) + field_offset );
     ___decode_eterm(nested, msg);
   }
 };
 
-template<typename T>
-struct Decoder<T, typename boost::enable_if_c<boost::is_same<const char*, T>::value>::type> {
+template<>
+struct Decoder<const char*> {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     *(const char**)(((uint8_t*)instance) + field_offset) = strdup(ERL_ATOM_PTR(msg));
     //TODO: free memory from strdup
   }
 };
 
-template<typename T>
-struct Decoder<T, typename boost::enable_if_c<boost::is_same<int, T>::value>::type> {
+template<>
+struct Decoder<int> {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     *(int*)(((uint8_t*)instance) + field_offset) = ERL_INT_VALUE(msg);
   }
