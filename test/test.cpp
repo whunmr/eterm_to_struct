@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <cstring>
+#include <climits>
 #include <iostream>
 #include <gtest/gtest.h>
 using namespace std;
@@ -89,6 +90,7 @@ struct Decoder {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     Serializable& nested = *(Serializable*)( ((uint8_t*)instance) + field_offset );
     ___decode_eterm(nested, msg);
+    cout << "==========> default decode" << endl;
   }
 };
 
@@ -100,12 +102,20 @@ struct Decoder<const char*> {
   }
 };
 
-template<>
-struct Decoder<int> {
+/*Erl_Integer ival;*/
+template<> struct Decoder<int> {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     *(int*)(((uint8_t*)instance) + field_offset) = ERL_INT_VALUE(msg);
   }
 };
+
+/*Erl_Uinteger ival;*/
+template<> struct Decoder<unsigned int> {
+  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
+    *(unsigned int*)(((uint8_t*)instance) + field_offset) = ERL_INT_UVALUE(msg);
+  }
+};
+
 
 #if 0
 typedef struct _eterm {
@@ -220,24 +230,28 @@ ___def_data(DataB)
 ___end_def_data;
 
 ___def_data(DataC)
+  ___field(int) i;
   ___field(unsigned int) ui;
 ___end_def_data;
 
 ////////////////////////////////////////////////////////////////////////////////
 TEST(DataC, xxx0) {
-  DataA a;
-  ETERM* tuplep = erl_format((char*)"{3, 4}");
-  
-  ___decode_eterm(a, tuplep);  
+  DataC c;
+  ETERM* tuplep = erl_format((char*)"{2147483648, 2147483648}");
 
-  EXPECT_EQ(3, (int)a.ia);
-  EXPECT_EQ(4, (int)a.ib);
+  ___decode_eterm(c, tuplep);  
+
+  EXPECT_EQ(2147483648, INT_MAX + 1);
+  EXPECT_EQ(-2147483648, c.i._);
+  EXPECT_EQ(2147483648, c.ui._);
+  
   erl_free_term(tuplep);
 }
 
 /*----------------------------------------------------------------------------*/
 TEST(DataA, xxx0) {
   DataA a;
+
   ETERM* tuplep = erl_format((char*)"{3, 4}");
   
   ___decode_eterm(a, tuplep);  
