@@ -123,7 +123,6 @@ struct Decoder<const char*> {
   }
 };
 
-
 /*not support types*/
 template<> struct Decoder<float> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
 template<> struct Decoder<long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
