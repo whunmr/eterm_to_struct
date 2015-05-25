@@ -122,8 +122,8 @@ typedef struct _eterm {
   union {
     Erl_Integer    ival;
     Erl_Uinteger   uival; 
-    Erl_LLInteger  llval;
-    Erl_ULLInteger ullval;
+    //Erl_LLInteger  llval;
+    //Erl_ULLInteger ullval;
     Erl_Float      fval;
     Erl_Atom       aval;
     Erl_Pid        pidval;     
@@ -237,14 +237,13 @@ ___end_def_data;
 ////////////////////////////////////////////////////////////////////////////////
 TEST(DataC, xxx0) {
   DataC c;
-  ETERM* tuplep = erl_format((char*)"{2147483648, 2147483648}");
+  
+  ETERM* tuplep = erl_format((char*)"{~i, ~i}", INT_MAX+1, INT_MAX+1);
 
   ___decode_eterm(c, tuplep);  
 
-  EXPECT_EQ(2147483648, INT_MAX + 1);
-  EXPECT_EQ(-2147483648, c.i._);
-  EXPECT_EQ(2147483648, c.ui._);
-  
+  EXPECT_EQ(INT_MAX+1, c.i._);
+  EXPECT_EQ(INT_MAX+1, c.ui._);
   erl_free_term(tuplep);
 }
 
