@@ -43,7 +43,7 @@ struct FieldsInfo {
     p = __p_DataA; //disable unused variable warning
     
     g_pp_next_field_info_ = &class_fields_info_;
-    cout << "1set g_pp_next_field_info_ at class register: " << (long)g_pp_next_field_info_ << endl;
+    //cout << "1set g_pp_next_field_info_ at class register: " << (long)g_pp_next_field_info_ << endl;
   }
   static FieldInfo* class_fields_info_;
 };
@@ -90,7 +90,28 @@ struct Decoder {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     Serializable& nested = *(Serializable*)( ((uint8_t*)instance) + field_offset );
     ___decode_eterm(nested, msg);
-    cout << "==========> default decode" << endl;
+    //cout << "==========> default decode" << endl;
+  }
+};
+
+/*Erl_Integer ival;*/
+template<> struct Decoder<int> {
+  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
+    *(int*)(((uint8_t*)instance) + field_offset) = ERL_INT_VALUE(msg);
+  }
+};
+
+/*Erl_Uinteger uival;*/
+template<> struct Decoder<unsigned int> {
+  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
+    *(unsigned int*)(((uint8_t*)instance) + field_offset) = ERL_INT_UVALUE(msg);
+  }
+};
+
+/*Erl_Uinteger fval;*/
+template<> struct Decoder<double> {
+  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
+    *(double*)(((uint8_t*)instance) + field_offset) = ERL_FLOAT_VALUE(msg);
   }
 };
 
@@ -102,27 +123,13 @@ struct Decoder<const char*> {
   }
 };
 
-/*Erl_Integer ival;*/
-template<> struct Decoder<int> {
-  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
-    *(int*)(((uint8_t*)instance) + field_offset) = ERL_INT_VALUE(msg);
-  }
-};
 
-/*Erl_Uinteger ival;*/
-template<> struct Decoder<unsigned int> {
-  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
-    *(unsigned int*)(((uint8_t*)instance) + field_offset) = ERL_INT_UVALUE(msg);
-  }
-};
-
-
-/*not supported type*/
+/*not support types*/
+template<> struct Decoder<float> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
 template<> struct Decoder<long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
 template<> struct Decoder<unsigned long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
 template<> struct Decoder<long long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
 template<> struct Decoder<unsigned long long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
-
 
 
 #if 0
@@ -134,7 +141,7 @@ typedef struct _eterm {
     //Erl_ULLInteger ullval;
     Erl_Float      fval;
     Erl_Atom       aval;
-    Erl_Pid        pidval;     
+    Erl_Pid        pidval;
     Erl_Port       portval;    
     Erl_Ref        refval;   
     Erl_List       lval;
@@ -160,14 +167,14 @@ struct __t {
       f_.offset_ = reinterpret_cast<long>(this) - reinterpret_cast<long>(g_outmost_this_address);
       f_.decode_func_ = &Decoder<T>::decode;
 
-      cout << "__t:" << (long*)this << " size:" << sizeof(__t<T, Holder, field_tag>)
+      /*cout << "__t:" << (long*)this << " size:" << sizeof(__t<T, Holder, field_tag>)
            << " index: " << (int)f_.index_
            << " offset: " << f_.offset_
            << " decode: " << (long)f_.decode_func_
            << " this field:" << (long)&f_
            << " prev_field:" << (long)g_pp_next_field_info_
            << " next pointer addr:" << (long)&f_.next_field_info_
-           << endl;
+           << endl;*/
 
       *g_pp_next_field_info_ = &f_;      
       g_pp_next_field_info_ = &f_.next_field_info_;
@@ -207,7 +214,7 @@ struct StartAddressRegister {
     if (p != NULL) {
       g_outmost_this_address = p;
       g_field_index_ = 1;
-      cout << "StartAddressRegister: " << g_outmost_this_address << endl;
+      //cout << "StartAddressRegister: " << g_outmost_this_address << endl;
     }
   }
 };
@@ -240,25 +247,30 @@ ___end_def_data;
 ___def_data(DataC)
   ___field(int) i;
   ___field(unsigned int) ui;
+  ___field(double) d;
+  ___field(const char*) atom;
 ___end_def_data;
 
 ////////////////////////////////////////////////////////////////////////////////
 TEST(DataC, xxx0) {
   DataC c;
-  
-  ETERM* tuplep = erl_format((char*)"{~i, ~i}", INT_MAX+1, INT_MAX+1);
+  unsigned int X = INT_MAX;
+  X = X + 1;
+    
+  ETERM* tuplep = erl_format((char*)"{~i, ~i, ~f, ~a}", INT_MAX, X, 9.99, "atom_value");
 
-  ___decode_eterm(c, tuplep);  
+  ___decode_eterm(c, tuplep);
 
-  EXPECT_EQ(INT_MAX+1, c.i._);
-  EXPECT_EQ(INT_MAX+1, c.ui._);
+  EXPECT_EQ(INT_MAX, c.i._);
+  EXPECT_EQ(X, c.ui._);
+  EXPECT_EQ(9.99, c.d._);
+  EXPECT_STREQ("atom_value", c.atom);
   erl_free_term(tuplep);
 }
 
 /*----------------------------------------------------------------------------*/
 TEST(DataA, xxx0) {
   DataA a;
-
   ETERM* tuplep = erl_format((char*)"{3, 4}");
   
   ___decode_eterm(a, tuplep);  
