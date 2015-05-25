@@ -117,6 +117,14 @@ template<> struct Decoder<unsigned int> {
 };
 
 
+/*not supported type*/
+template<> struct Decoder<long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
+template<> struct Decoder<unsigned long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
+template<> struct Decoder<long long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
+template<> struct Decoder<unsigned long long> {  static void decode(void* instance, size_t field_offset, const ETERM* msg); };
+
+
+
 #if 0
 typedef struct _eterm {
   union {
