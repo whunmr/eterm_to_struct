@@ -166,14 +166,14 @@ struct __t {
       f_.offset_ = reinterpret_cast<long>(this) - reinterpret_cast<long>(g_outmost_this_address);
       f_.decode_func_ = &Decoder<T>::decode;
 
-      /*cout << "__t:" << (long*)this << " size:" << sizeof(__t<T, Holder, field_tag>)
+      cout << "__t:" << (long*)this << " size:" << sizeof(__t<T, Holder, field_tag>)
            << " index: " << (int)f_.index_
            << " offset: " << f_.offset_
            << " decode: " << (long)f_.decode_func_
            << " this field:" << (long)&f_
            << " prev_field:" << (long)g_pp_next_field_info_
            << " next pointer addr:" << (long)&f_.next_field_info_
-           << endl;*/
+           << endl;
 
       *g_pp_next_field_info_ = &f_;      
       g_pp_next_field_info_ = &f_.next_field_info_;
@@ -219,7 +219,7 @@ struct StartAddressRegister {
 };
 
 #define ___def_data(_name) \
-struct _name : StartAddressRegister, FieldsInfo<_name>, Serializable {                    \
+struct _name : Serializable, StartAddressRegister, FieldsInfo<_name> {                    \
   typedef _name data_type;                                                                \
   _name(ArgForceMetaRegister* a) : StartAddressRegister(this), FieldsInfo<_name>(this) {  \
     g_field_index_ = 0;                                                                   \
@@ -252,6 +252,8 @@ ___end_def_data;
 
 ////////////////////////////////////////////////////////////////////////////////
 TEST(DataC, xxx0) {
+  cout << "---------->" << sizeof(char*) << endl;
+  
   DataC c;
   unsigned int X = INT_MAX;
   X = X + 1;
