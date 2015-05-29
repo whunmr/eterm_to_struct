@@ -252,8 +252,6 @@ ___end_def_data;
 
 ////////////////////////////////////////////////////////////////////////////////
 TEST(DataC, xxx0) {
-  cout << "---------->" << sizeof(char*) << endl;
-  
   DataC c;
   unsigned int X = INT_MAX;
   X = X + 1;
