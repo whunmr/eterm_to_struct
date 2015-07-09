@@ -112,7 +112,15 @@ struct Decoder {
 template<typename T, size_t N>
 struct Decoder<__Array<T, N> > {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
-    cout << "array" << N << endl;
+      if (!ERL_IS_TUPLE(msg)) {
+        cout << "only support decode tuple into array" << endl;
+        return;
+      }
+
+      for (int i = 0; i < N; ++i) {
+        ETERM* et = erl_element(i+1, msg);
+        Decoder<T>::decode((((uint8_t*)instance) + field_offset), i*sizeof(T), et);
+      }
   }
 };
 
@@ -274,7 +282,7 @@ ___end_def_data;
 
 ___def_data(DataD)
   ___field(int) i;
-  //___field(__array(int, 4)) ia;
+  ___field(__array(int, 4)) ia;
 ___end_def_data;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,6 +293,10 @@ TEST(DataD, should_able_to_decode___array_of_int) {
   ___decode_eterm(d, tuplep);
 
   EXPECT_EQ(3, (int)d.i);
+  EXPECT_EQ(4, (int)d.ia._[0]);
+  EXPECT_EQ(5, (int)d.ia._[1]);
+  EXPECT_EQ(6, (int)d.ia._[2]);
+  EXPECT_EQ(7, (int)d.ia._[3]);
 }
 
 TEST(DataC, xxx0) {
