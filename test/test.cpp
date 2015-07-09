@@ -80,7 +80,6 @@ void ___decode_eterm(Serializable& __s, const ETERM* msg) {
   while (f != NULL) {
     if (ERL_IS_TUPLE(msg)) {
       et = erl_element(f->index_, msg);
-      cout << "get element " << (int)f->index_ << endl;
     } else if (ERL_IS_LIST(msg)) {
       et = erl_hd(msg);
     }
@@ -105,7 +104,6 @@ void ___decode_eterm(Serializable& __s, const ETERM* msg) {
 template<typename T>
 struct Decoder {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
-    cout << "decode serializable" << endl;
     Serializable& nested = *(Serializable*)( ((uint8_t*)instance) + field_offset );
     ___decode_eterm(nested, msg);
   }
@@ -121,7 +119,6 @@ struct Decoder<__Array<T, N> > {
 
       for (int i = 0; i < N; ++i) {
         ETERM* et = erl_element(i+1, msg);
-        cout << "decode tuple/array elemen" << i << endl;
         Decoder<T>::decode((((uint8_t*)instance) + field_offset), i*sizeof(T), et);
       }
   }
@@ -130,7 +127,6 @@ struct Decoder<__Array<T, N> > {
 /*Erl_Integer ival;*/
 template<> struct Decoder<int> {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
-    cout << "int" << ERL_INT_VALUE(msg) << endl;
     *(int*)(((uint8_t*)instance) + field_offset) = ERL_INT_VALUE(msg);
   }
 };
