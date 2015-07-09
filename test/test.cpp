@@ -8,6 +8,22 @@ using namespace std;
 #include "erl_interface.h"
 #include "ei.h"
 
+/*------------------------------------------------------------------------------*/
+struct ArrayBase {};
+
+template<typename T, size_t N>
+struct __Array : ArrayBase {
+    T elems[N];
+
+    enum {capacity = N};
+    typedef T element_type;
+     
+    operator T*() { return elems; }
+};
+
+#define __array(type, size) __Array<type, size>
+
+/*------------------------------------------------------------------------------*/
 typedef unsigned char FieldIndex;
 typedef void (*DecodeFunc)(void* instance, size_t field_offset, const ETERM* msg);
 
@@ -90,7 +106,13 @@ struct Decoder {
   static void decode(void* instance, size_t field_offset, const ETERM* msg) {
     Serializable& nested = *(Serializable*)( ((uint8_t*)instance) + field_offset );
     ___decode_eterm(nested, msg);
-    //cout << "==========> default decode" << endl;
+  }
+};
+
+template<typename T, size_t N>
+struct Decoder<__Array<T, N> > {
+  static void decode(void* instance, size_t field_offset, const ETERM* msg) {
+    cout << "array" << N << endl;
   }
 };
 
@@ -227,8 +249,8 @@ struct _name : Serializable, StartAddressRegister, FieldsInfo<_name> {          
   }                                                                                       \
   _name() : Serializable(class_fields_info_) { }
 
-#define ___field_impl(_type, line) __t<_type, data_type, __##line>
-#define ___field(_type) ___field_impl(_type, LINE__)
+#define ___field_impl(line, ...) __t<__VA_ARGS__, data_type, __##line>
+#define ___field(...) ___field_impl(LINE__, __VA_ARGS__)
 
 #define ___end_def_data };
 
@@ -250,7 +272,21 @@ ___def_data(DataC)
   ___field(const char*) atom;
 ___end_def_data;
 
+___def_data(DataD)
+  ___field(int) i;
+  //___field(__array(int, 4)) ia;
+___end_def_data;
+
 ////////////////////////////////////////////////////////////////////////////////
+TEST(DataD, should_able_to_decode___array_of_int) {
+  DataD d;
+  ETERM* tuplep = erl_format((char*)"{3, {4, 5, 6, 7} }");
+
+  ___decode_eterm(d, tuplep);
+
+  EXPECT_EQ(3, (int)d.i);
+}
+
 TEST(DataC, xxx0) {
   DataC c;
   unsigned int X = INT_MAX;
@@ -310,4 +346,6 @@ INSTANTIATE_TEST_CASE_P( TestTupleAndList, Eterm_to_DataB
                        , "[foo, [3, 4]]"
                        , "{foo, {3, 4}}"
                        , "{foo, [3, 4]}"));
+
+
 
